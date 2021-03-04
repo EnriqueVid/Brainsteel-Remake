@@ -13,8 +13,10 @@ GameObject:
   - component: {fileID: 2058522356271570783}
   - component: {fileID: 2058522356271570776}
   - component: {fileID: 2058522356271570777}
+  - component: {fileID: -1498736648138989883}
+  - component: {fileID: 2088062045534439461}
   m_Layer: 0
-  m_Name: Falling sphere
+  m_Name: Falling sphere meh
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -28,7 +30,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2058522356271570778}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 6, z: 0}
+  m_LocalPosition: {x: 0, y: 1.06, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
@@ -109,4 +111,30 @@ Rigidbody:
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
+--- !u!114 &-1498736648138989883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2058522356271570778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 566f569c7fdf5e34f84683d4718492a7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  secondsLeft: 10
+--- !u!114 &2088062045534439461
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2058522356271570778}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83ad7cb549b7a4945958486ce7c051ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  forceValue: 10

@@ -11,6 +11,8 @@ public class SpawnFallingSpheres : MonoBehaviour
     public float firstSpawnDelay = 5.0f;
     public float spawnInterval = 3.0f;
 
+    IEnumerator corutina;
+
     // Spawn location
     public Vector3 spawnPoint;
 
@@ -21,19 +23,20 @@ public class SpawnFallingSpheres : MonoBehaviour
         // Where to spawn the falling spheres?
         spawnPoint = new Vector3(0.0f, 6, 0.0f);
 
-        // When to spawn the falling spheres?
-        InvokeRepeating("SpawnFallingSphere", firstSpawnDelay, spawnInterval);
 
+        // When to spawn the falling spheres?
+        //InvokeRepeating("SpawnFallingSphere", firstSpawnDelay, spawnInterval);
 
 
         // Coroutine (advanced, please calm down and die silently)
-        // StartCoroutine(CoSpawnFallingSphere());
+        corutina = CoSpawnFallingSphere();
+        StartCoroutine(corutina);
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+
     }
 
     // Spawning a falling sphere function
@@ -43,17 +46,13 @@ public class SpawnFallingSpheres : MonoBehaviour
         Instantiate(fallingSpherePrefab, spawnPoint, fallingSpherePrefab.transform.rotation);
     }
 
-
-
-
-
     // Coroutines, proceed with caution
     IEnumerator CoSpawnFallingSphere()
     {
         while (true)
         {
             yield return new WaitForSeconds(spawnInterval);
-            Instantiate(fallingSpherePrefab, spawnPoint, fallingSpherePrefab.transform.rotation);
+            SpawnFallingSphere();
         }
     }
 }

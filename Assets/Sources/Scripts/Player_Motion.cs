@@ -31,10 +31,15 @@ public class Player_Motion : MonoBehaviour
 
     [SerializeField] bool grounded;
 
+    [SerializeField] bool touching;
+    [SerializeField] float angle = 0.0f;
+
 
 
     private CharacterController controller;
     private Camera playerCamera;
+
+    public GameObject spherePos;
     
     
 
@@ -102,8 +107,41 @@ public class Player_Motion : MonoBehaviour
 
         movement += Vector3.up * vSpeed;
 
+        // DETECT COLLISIONS
+
+        Vector3 p1 = transform.position + Vector3.up * controller.radius;
+        Vector3 p2 = transform.position + Vector3.up * (controller.height - controller.radius);
+        Vector3 dir = Vector3.down;
+
+        touching = Physics.CapsuleCast(p1, p2, controller.radius, dir, out RaycastHit hit, controller.skinWidth + 0.01f);
+
+        if (touching)
+        {
+            spherePos.transform.position = hit.point;
+
+            LineRenderer lr = spherePos.GetComponentInChildren<LineRenderer>();
+            lr.SetPosition(1, hit.normal);
+
+            //angle = Mathf.Acos(Vector3.Dot(hit.normal, Vector3.up)/ (hit.normal.magnitude * Vector3.up.magnitude));
+
+            angle = Vector3.Angle(hit.normal, Vector3.up);
+            angle = 90 - angle;
+
+            if (angle < 70)
+            {
+                movement += hit.normal * 90 * Time.deltaTime;
+            }
+        }
+
+
+
         controller.Move(movement * Time.deltaTime);
 
+        //LineRenderer lr2 = GetComponentInChildren<LineRenderer>();
+        //lr2.SetPosition(1, movement);
+
+
+        
 
 
 

@@ -18,31 +18,37 @@ public class Player_Motion : MonoBehaviour
 
 
     [Header("Movement Options")]
-    [SerializeField] float walkSpeed = 3.0f;
+    
+    // Movimiento
+    [SerializeField] float walkSpeed = 5.0f;
     [SerializeField] float runSpeed = 5.0f;
     [SerializeField] float crouchSpeed = 1.5f;
-    [SerializeField] float gravity = -9.0f;
-    [SerializeField] float vSpeed = 0.0f;
-    [SerializeField] bool dJump = false;
-    [SerializeField] float jumpHeight = 1.5f;
+    [SerializeField] float airSpeed = 5.0f;
+    [SerializeField] float gravity = 15.0f;
+
+    // Agacharse y levantarse
+    [SerializeField] float crouchHeight = 1.0f;
+    [SerializeField] float standHeight = 1.8f;
+    [SerializeField] float crouchInterpolation = 0.25f;
+    
+    // Salto y doble salto
+    [SerializeField] float jumpHeight = 1.0f;
     [SerializeField] float dJumpHeight = 1f;
+
+    bool dJump = false;
+    bool crouched = false;
 
     [SerializeField] [Range(0.0f, 60.000000f)] float velocityInterpolation = 15;
     [Tooltip("[60 FPS], indica cuanto tarda el jugador en cambiar de velocidad | 1/vI ~= tiempo en segundos")]
 
+    // Velocidad persistente a la que se mueve el jugador.
     Vector3 characterSpeed;
 
-
-
+    // Variables que gestionan la respuesta del character controller al tocar el suelo.
     bool grounded;
     Vector3 groundNormal;
 
-    float lastTimeInGround = 0.0f;
-    float lastTimeInGroundMargin = 0.1f;
-
-
-    bool touching;
-    float angle = 0.0f;
+    float speedMultiplier = 1.0f;
 
 
     [Header("Debug Options")]
@@ -52,18 +58,17 @@ public class Player_Motion : MonoBehaviour
     public float t2 = 1.0000f;
 
 
-
     private CharacterController controller;
     private Camera playerCamera;
 
-    
-    
-    
 
-    // Start is called before the first frame update
+
+
+
+    // Función que se llama una vez al crearse el objeto una vez que el juego está ejecutándose
     void Start()
     {
-        QualitySettings.vSyncCount = 0;  // VSync must be disabled
+        QualitySettings.vSyncCount = 0;  // Deshabilitar VSync
         Application.targetFrameRate = 60;
 
         controller = GetComponent<CharacterController>();
@@ -73,7 +78,7 @@ public class Player_Motion : MonoBehaviour
         characterSpeed = Vector3.zero;
     }
 
-    // Update is called once per frame
+    // Función que se ejecuta cada frame
     void Update()
     {
         GroundCheck();
@@ -81,123 +86,39 @@ public class Player_Motion : MonoBehaviour
         Look();
 
         Move();
-
-        
-
-        /*
-
-        //MOVE PLAYER
-        
-
-        //Vector2 inputDir = new Vector2(Input.GetAxis("Horizontal"), Input.GetAxis("Vertical"));       -> GetAxis() devuelve un valor "smooth" lo que añade delay al movimiento
-        Vector2 inputDir = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical")); //-> GetAxisRaw() obtiene el valor "Raw"
-        inputDir.Normalize();
-
-        Vector3 movement = (transform.forward * inputDir.y + transform.right * inputDir.x);
-
-        movement *= walkSpeed;
-
-        
-
-        if (controller.isGrounded)
-        {
-            vSpeed = -2f;
-            dJump = true;
-        }
-
-        
-        if (Input.GetKeyDown(KeyCode.Space)) 
-        {
-            if (controller.isGrounded)  //Salto normal
-            {
-                lastTimeInGround = Time.time;
-                vSpeed = Mathf.Sqrt(jumpHeight * 2f * gravity);
-            }
-            else if (dJump) //Doble Salto
-            {
-                dJump = false;
-                vSpeed = Mathf.Sqrt(dJumpHeight * 2f * gravity);
-            }
-        }
-
-        vSpeed -= gravity * Time.deltaTime;
-
-        movement += Vector3.up * vSpeed;
-
-        // DETECT COLLISIONS
-
-        Vector3 p1 = transform.position + Vector3.up * controller.radius;
-        Vector3 p2 = transform.position + Vector3.up * (controller.height - controller.radius);
-        Vector3 dir = Vector3.down;
-
-        touching = Physics.CapsuleCast(p1, p2, controller.radius, dir, out RaycastHit hit, controller.skinWidth + 0.01f);
-
-        if (touching)
-        {
-            normalPos.transform.position = hit.point;
-
-            LineRenderer lr = normalPos.GetComponentInChildren<LineRenderer>();
-            lr.SetPosition(1, hit.normal);
-
-
-            //angle = Mathf.Acos(Vector3.Dot(hit.normal, Vector3.up)/ (hit.normal.magnitude * Vector3.up.magnitude));
-
-            angle = Vector3.Angle(hit.normal, Vector3.up);
-            angle = 90 - angle;
-
-            if (angle < 70)
-            {
-                movement += hit.normal * 90 * Time.deltaTime;
-            }
-        }
-
-
-
-        controller.Move(movement * Time.deltaTime);
-
-        //LineRenderer lr2 = GetComponentInChildren<LineRenderer>();
-        //lr2.SetPosition(1, movement);
-
-        UpdateDebug(movement);
-
-        */
     }
 
-    void GroundCheck() 
+    // Comprueba si justo debajo del jugador hay suelo y si no se trata de una rampa demasiado inclinada.
+    void GroundCheck()
     {
         grounded = false;
         groundNormal = Vector3.up;
 
-        //Comprobar si ha pasado un tiempo para poder saltar
-        if (Time.time >= lastTimeInGround + lastTimeInGroundMargin)
+        float checkDistance = 0.03f + controller.skinWidth;
+        Vector3 initPoint = transform.position + (Vector3.up * controller.radius);
+
+        if (Physics.SphereCast(initPoint, controller.radius, Vector3.down, out RaycastHit hit, checkDistance, -1, QueryTriggerInteraction.Ignore))
         {
-            //Sphere cast para comprobar suelo (0.041 - 0.07)
-            float checkDistance = 0.04f + controller.skinWidth;
-            Vector3 initPoint = transform.position + (Vector3.up * controller.radius);
+            groundNormal = hit.normal;
 
-            if (Physics.SphereCast(initPoint, controller.radius, Vector3.down, out RaycastHit hit, checkDistance, -1, QueryTriggerInteraction.Ignore))
+            if (Vector3.Angle(Vector3.up, hit.normal) <= controller.slopeLimit)
             {
-                groundNormal = hit.normal;
+                grounded = true;
+                dJump = true;
 
-                if (Vector3.Angle(Vector3.up, hit.normal) <= controller.slopeLimit)
+                // Si está un poco alejado del suelo y está cayendo, lo pegamos al suelo.
+                if (hit.distance > controller.skinWidth && characterSpeed.y <= 0f)
                 {
-                    grounded = true;
-                    dJump = true;
-
-                    // handle snapping to the ground
-                    if (hit.distance > controller.skinWidth)
-                    {
-                        controller.Move(Vector3.down * hit.distance);
-                    }
-
+                    controller.Move(Vector3.down * hit.distance);
                 }
+
             }
         }
     }
 
-    void Look() 
+    void Look()
     {
-        //ROTATE CAMERA & PLAYER
+        //Rotar jugador, character controller horizontalmente y cámara verticalmente.
         float mouseX = Input.GetAxis("Mouse X") * cameraSensitivity * Time.deltaTime;
         float mouseY = Input.GetAxis("Mouse Y") * cameraSensitivity * Time.deltaTime;
 
@@ -209,89 +130,147 @@ public class Player_Motion : MonoBehaviour
     }
 
 
-    void Move() 
+    void Move()
     {
-        //Vector3 moveDir = new Vector3(Input.GetAxisRaw("Horizontal"), 0f, Input.GetAxisRaw("Vertical"));
-        //moveDir = Vector3.ClampMagnitude(moveDir, 1);
-        //Vector3 globalMoveDir = transform.TransformVector(moveDir);
+
+        speedMultiplier = 1.0f;
 
 
+        // Agacharse y levantarse
+        // El jugador se agacha mientras se mantenga el botón de agacharse pulsado y esté en el suelo.
+        // Si el jugador está en el aire, se levanta.
+        if ((Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl)) && grounded)
+        {
+            speedMultiplier = crouchSpeed;
+            Crouch();
+        }
+        else
+        {
+            UnCrouch();
+        }
+
+        // Control de la dirección de movimiento por input
         Vector3 moveDir = transform.forward * Input.GetAxisRaw("Vertical") + transform.right * Input.GetAxisRaw("Horizontal");
         moveDir = Vector3.ClampMagnitude(moveDir, 1);
 
         if (grounded)
         {
-            if (groundNormal != Vector3.up) 
+            if (groundNormal != Vector3.up)
             {
-                //Reorientar vector del movimiento
-                moveDir = GetReorientedVector(moveDir.normalized) * moveDir.magnitude;
+                // Reorientar vector del movimiento
+                moveDir = GetReorientedVector(moveDir.normalized, groundNormal) * moveDir.magnitude;
             }
 
-            moveDir *= walkSpeed;
-                                         
+            moveDir *= walkSpeed * speedMultiplier;
+
+            // Interpolación de velocidades, permite tener una pequeña inercia en el suelo
             characterSpeed = Vector3.Lerp(characterSpeed, moveDir, velocityInterpolation * Time.deltaTime);
 
+
+            // Primer salto
             if (Input.GetButtonDown("Jump"))
             {
-                characterSpeed = Vector3.ProjectOnPlane(characterSpeed, Vector3.up);
-                characterSpeed += Vector3.up * Mathf.Sqrt(jumpHeight * 2f * gravity);
+                characterSpeed.y = Mathf.Sqrt(jumpHeight * 2f * gravity);
 
-                lastTimeInGround = Time.time;
                 grounded = false;
                 groundNormal = Vector3.up;
             }
-
         }
-        else 
+        else
         {
-            characterSpeed += moveDir * 25 * Time.deltaTime;
-
-            // limit air speed to a maximum, but only horizontally
+            // Interpolación de velocidades, en el aire
+            characterSpeed += moveDir * airSpeed * velocityInterpolation * 0.5f * Time.deltaTime;
+            
+            // Limitador de la velocidad horizontal aérea
             float verticalVelocity = characterSpeed.y;
             Vector3 horizontalVelocity = Vector3.ProjectOnPlane(characterSpeed, Vector3.up);
-            horizontalVelocity = Vector3.ClampMagnitude(horizontalVelocity, 10);
-            
+            horizontalVelocity = Vector3.ClampMagnitude(horizontalVelocity, airSpeed);
+
+            // Doble salto 
             if (Input.GetButtonDown("Jump") && dJump)
             {
-                characterSpeed += Vector3.up * Mathf.Sqrt(dJumpHeight * 2f * gravity);
+                characterSpeed.y = Mathf.Sqrt(dJumpHeight * 2f * gravity);
                 dJump = false;
             }
-            else 
+            else
             {
                 characterSpeed = horizontalVelocity + (Vector3.up * verticalVelocity);
             }
 
 
-            // apply the gravity to the velocity
+            // Le aplicamos la gravedad a la velocidad del jugador
             characterSpeed += Vector3.down * gravity * Time.deltaTime;
-
         }
 
-
+        // Movemos al character controller del jugador a la velocidad resultante de los cálculos previos
         controller.Move(characterSpeed * Time.deltaTime);
 
+
+
+        // Si colisiona con algo, modifica su velocidad en función de la colisión.
+            // Si colisiona con rampas muy inclinadas, se desliza.
+            // Si colisiona con el suelo, la velocidad en Y se anula.
+            // Si colisiona con una pared, la velocidad en dirección a esa pared se anula.
         Vector3 point1 = transform.position + (Vector3.up * controller.radius);
         Vector3 point2 = transform.position + (Vector3.up * (controller.height - controller.radius));
 
-        if (Physics.CapsuleCast(point1, point2, controller.radius, characterSpeed.normalized, out RaycastHit hit, characterSpeed.magnitude * Time.deltaTime, -1, QueryTriggerInteraction.Ignore)) 
+        if (Physics.CapsuleCast(point1, point2, controller.radius, characterSpeed.normalized, out RaycastHit hit, characterSpeed.magnitude * Time.deltaTime, -1, QueryTriggerInteraction.Ignore))
         {
             characterSpeed = Vector3.ProjectOnPlane(characterSpeed, hit.normal);
         }
 
     }
 
-    Vector3 GetReorientedVector(Vector3 direction) 
+
+    // Dados un vector director "direction" y la normal "normal" de un plano,
+    // devuelve el vector "direction" proyectado sobre el plano de "normal".
+    Vector3 GetReorientedVector(Vector3 direction, Vector3 normal)
     {
         Vector3 resul = Vector3.Cross(direction, Vector3.up);
-        return Vector3.Cross(groundNormal, resul).normalized;
+        return Vector3.Cross(normal, resul).normalized;
     }
 
-
-    void UpdateDebug(Vector3 mov) 
+    // Función de agacharse que solo la realiza el jugador si estaba levantado anteriormente.
+    void Crouch()
     {
-        Vector3 mov_norm = mov.normalized;
-        directorPos.transform.position = transform.position;
-        directorPos.transform.rotation = Quaternion.LookRotation(mov_norm, Vector3.up);
+        // Encogemos el character controller y decrementamos la posición de la cámara
+        float heightStep = Time.deltaTime / crouchInterpolation;
+            
+        if (controller.height - heightStep <= crouchHeight)
+        {
+            heightStep = controller.height - crouchHeight;
+        }
 
+        controller.height -= heightStep;
+        controller.center = Vector3.up * (controller.height / 2.0f);
+        playerCamera.transform.position += Vector3.down * heightStep;
+
+        crouched = true;
+    }
+
+    // Función de levantarse que solo la realiza el jugador si estaba agachado anteriormente.
+    void UnCrouch()
+    {
+        if (crouched)
+        {
+            // Comprobamos si hay algún obstáculo que nos impida levantarnos
+            Vector3 initPoint = transform.position + (Vector3.up * (controller.height - controller.radius));
+
+            if (!Physics.SphereCast(initPoint, controller.radius, Vector3.up, out RaycastHit hit, crouchHeight, -1, QueryTriggerInteraction.Ignore))
+            {
+                // Agrandamos el character controller e incrementamos la posición de la cámara
+                float heightStep = Time.deltaTime / crouchInterpolation;
+
+                if (controller.height + heightStep >= standHeight)
+                {
+                    heightStep = standHeight - controller.height;
+                    crouched = false;
+                }
+
+                controller.height += heightStep;
+                controller.center = Vector3.up * (controller.height / 2.0f);
+                playerCamera.transform.position += Vector3.up * heightStep;
+            }
+        }
     }
 }
